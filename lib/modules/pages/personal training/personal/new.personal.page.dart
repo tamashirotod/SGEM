@@ -155,7 +155,8 @@ class NuevoPersonalPage extends StatelessWidget {
         CustomTextField(
           label: "Apellido Paterno",
           controller: controller.apellidoPaternoController,
-          isReadOnly: isViewing,
+          //isReadOnly: isViewing,
+          isReadOnly: true,
         ),
         const SizedBox(height: 15),
         CustomTextField(
@@ -180,7 +181,8 @@ class NuevoPersonalPage extends StatelessWidget {
         CustomTextField(
           label: "Apellido Materno",
           controller: controller.apellidoMaternoController,
-          isReadOnly: isViewing,
+          //isReadOnly: isViewing,
+          isReadOnly: true,
         ),
         const SizedBox(height: 15),
         CustomTextField(
@@ -210,13 +212,13 @@ class NuevoPersonalPage extends StatelessWidget {
           const SizedBox(height: 10),
           Row(
             children: [
+              const SizedBox(width: 10),
               Expanded(
-                child: CustomDropdown(
-                  hintText: "Categoría Licencia",
-                  options: const ["A", "B", "C", "D"],
-                  isSearchable: false,
-                  onChanged: isViewing ? (_) {} : (value) {},
-                  isRequired: !isViewing,
+                child: CustomTextField(
+                  label: "Categoria Licencia",
+                  controller: controller.categoriaLicenciaController ,
+                  isReadOnly: true,
+                  isRequired: false,
                 ),
               ),
               const SizedBox(width: 10),
@@ -374,6 +376,7 @@ class NuevoPersonalPage extends StatelessWidget {
         ElevatedButton(
           onPressed: () async {
             bool success = false;
+            String accion = isEditing ? 'actualizar' : 'registrar';
             if (isEditing) {
               success = await controller.gestionarPersona(
                   accion: 'actualizar', context: context);
@@ -382,7 +385,21 @@ class NuevoPersonalPage extends StatelessWidget {
                   accion: 'registrar', context: context);
             }
             if (success) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Operación de $accion completada exitosamente."),
+                  backgroundColor: Colors.green,
+                ),
+              );
               onCancel();
+            }
+            else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text("Error al intentar $accion la persona."),
+                  backgroundColor: Colors.red,
+                ),
+              );
             }
           },
           style: ElevatedButton.styleFrom(
@@ -390,6 +407,7 @@ class NuevoPersonalPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           ),
           child: const Text("Guardar", style: TextStyle(color: Colors.white)),
+
         ),
       ],
     );
@@ -445,7 +463,8 @@ class NuevoPersonalPage extends StatelessWidget {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
-      controller.text = DateFormat('dd/MM/yyyy').format(picked);
+      controller.text = DateFormat('yyyy-MM-dd').format(picked);
+      //controller.text = picked.toString();
     }
   }
 }
