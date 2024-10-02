@@ -1,6 +1,8 @@
 import 'dart:developer';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:sgem/config/api/api.personal.dart';
 import 'package:sgem/config/api/response.handler.dart';
 import 'package:sgem/shared/modules/personal.dart';
@@ -32,6 +34,35 @@ class NewPersonalController extends GetxController {
 
   final PersonalService personalService = PersonalService();
   Personal? personalData;
+  Rxn<Uint8List?> personalPhoto = Rxn<Uint8List?>();
+  var estadoPersonal = 'Cesado'.obs;
+
+  bool get isOperacionMina => operacionMinaController.text == 'S';
+  set isOperacionMina(bool value) {
+    operacionMinaController.text = value ? 'S' : 'N';
+  }
+
+  bool get isZonaPlataforma => zonaPlataformaController.text == 'S';
+  set isZonaPlataforma(bool value) {
+    zonaPlataformaController.text = value ? 'S' : 'N';
+  }
+
+  Future<void> loadPersonalPhoto(int idOrigen) async {
+    try {
+      final photoResponse =
+          await personalService.obtenerFotoPorCodigoOrigen(idOrigen);
+      log(photoResponse.data.toString());
+
+      if (photoResponse.success && photoResponse.data != null) {
+        personalPhoto.value = photoResponse.data;
+        log('Foto del personal cargada con éxito');
+      } else {
+        log('Error al cargar la foto: ${photoResponse.message}');
+      }
+    } catch (e) {
+      log('Error al cargar la foto del personal: $e');
+    }
+  }
 
   Future<void> buscarPersonalPorDni(String dni) async {
     try {
@@ -39,25 +70,13 @@ class NewPersonalController extends GetxController {
 
       if (response.success && response.data != null) {
         personalData = response.data;
+        log('Personal encontrado: ${personalData!.toJson().toString()}');
         llenarControladores(personalData!);
       } else {
         log('Error al buscar el personal: ${response.message}');
       }
     } catch (e) {
       log('Error inesperado al buscar el personal: $e');
-    }
-  }
-
-  DateTime? parseDate(String? rawDate) {
-    if (rawDate == null || rawDate.isEmpty) {
-      return null;
-    }
-
-    try {
-      return DateTime.parse(rawDate); // Handle ISO 8601 formatted dates
-    } catch (e) {
-      log('Error al parsear la fecha: $e');
-      return null;
     }
   }
 
@@ -72,7 +91,7 @@ class NewPersonalController extends GetxController {
     gerenciaController.text = personal.gerencia;
 
     fechaIngresoController.text = personal.fechaIngreso != null
-        ? _formatDate(parseDate(personal.fechaIngreso.toString())!)
+        ? _formatDate(personal.fechaIngreso!)
         : '';
 
     fechaIngresoMinaController.text = personal.fechaIngresoMina != null
@@ -89,6 +108,14 @@ class NewPersonalController extends GetxController {
     restriccionesController.text = personal.restricciones;
     operacionMinaController.text = personal.operacionMina;
     zonaPlataformaController.text = personal.zonaPlataforma;
+
+    if (personal.estado.nombre == 'Activo') {
+      estadoPersonal.value = 'Activo';
+    } else {
+      estadoPersonal.value = 'Cesado';
+    }
+    log('Controladores llenados con éxito');
+    log('Estado del personal: ${estadoPersonal.value}');
   }
 
   Future<bool> gestionarPersona({
@@ -99,8 +126,8 @@ class NewPersonalController extends GetxController {
     if (!validate(context)) {
       return false;
     }
-
     try {
+      log('Intentando gestionar persona...');
       personalData!
         ..primerNombre = nombresController.text.split(' ').first
         ..segundoNombre = nombresController.text.split(' ').length > 1
@@ -121,16 +148,16 @@ class NewPersonalController extends GetxController {
             gerenciaController.text.isNotEmpty ? gerenciaController.text : ''
         ..area = areaController.text.isNotEmpty ? areaController.text : ''
         ..fechaIngreso = fechaIngresoController.text.isNotEmpty
-            ? DateTime.parse(fechaIngresoController.text)
+            ? DateFormat('dd/MM/yyyy').parse(fechaIngresoController.text)
             : null
         ..fechaIngresoMina = fechaIngresoMinaController.text.isNotEmpty
-            ? DateTime.parse(fechaIngresoMinaController.text)
+            ? DateFormat('dd/MM/yyyy').parse(fechaIngresoMinaController.text)
             : null
         ..licenciaConducir = codigoLicenciaController.text.isNotEmpty
             ? codigoLicenciaController.text
             : ''
         ..licenciaVencimiento = fechaRevalidacionController.text.isNotEmpty
-            ? DateTime.parse(fechaRevalidacionController.text)
+            ? DateFormat('dd/MM/yyyy').parse(fechaRevalidacionController.text)
             : null
         ..operacionMina = operacionMinaController.text.isNotEmpty
             ? operacionMinaController.text
@@ -143,28 +170,27 @@ class NewPersonalController extends GetxController {
             : '';
 
       if (accion == 'eliminar') {
+        log('Preparando datos para eliminar');
         personalData!
           ..eliminado = 'S'
           ..motivoElimina = motivoEliminacion ?? 'Sin motivo'
           ..usuarioElimina = 'usuarioActual';
       }
 
+      log('Datos de la persona antes de eliminar: ${personalData!.toJson()}');
+
       final response = await _accionPersona(accion);
 
       if (response.success) {
         log('Acción $accion realizada exitosamente');
-        // Redirigir a la página de "Buscar Entrenamiento" en caso de éxito
-        Get.toNamed('/buscarEntrenamiento');
+        //Get.toNamed('/buscarEntrenamiento');
         return true;
       } else {
         log('Acción $accion fallida: ${response.message}');
-        showErrorModal(
-            context, response.message ?? 'Error al gestionar la persona');
         return false;
       }
     } catch (e) {
       log('Error al $accion persona: $e');
-      showErrorModal(context, 'Error al $accion persona');
       return false;
     }
   }
@@ -176,8 +202,10 @@ class NewPersonalController extends GetxController {
         log('Registrar');
         return personalService.registrarPersona(personalData!);
       case 'actualizar':
+        log('Actualizar');
         return personalService.actualizarPersona(personalData!);
       case 'eliminar':
+        log('Eliminar');
         return personalService.eliminarPersona(personalData!);
       default:
         throw Exception('Acción no reconocida: $accion');
@@ -185,29 +213,30 @@ class NewPersonalController extends GetxController {
   }
 
   String _formatDate(DateTime date) {
-    return date.toIso8601String(); // ISO 8601 format
+    return DateFormat('dd/MM/yyyy').format(date);
   }
+
   //Validaciones
   bool validate(BuildContext context) {
     if (dniController.text.isEmpty || dniController.text.length != 8) {
-      showErrorModal(
-          context, 'El campo DNI es obligatorio y debe contener 8 dígitos.');
+      //showErrorModal(
+      //  context, 'El campo DNI es obligatorio y debe contener 8 dígitos.');
       return false;
     }
     if (nombresController.text.isEmpty) {
-      showErrorModal(context, 'El campo Nombres es obligatorio.');
+      //showErrorModal(context, 'El campo Nombres es obligatorio.');
       return false;
     }
     if (apellidoPaternoController.text.isEmpty) {
-      showErrorModal(context, 'El campo Apellido Paterno es obligatorio.');
+      //showErrorModal(context, 'El campo Apellido Paterno es obligatorio.');
       return false;
     }
     if (apellidoMaternoController.text.isEmpty) {
-      showErrorModal(context, 'El campo Apellido Materno es obligatorio.');
+      //showErrorModal(context, 'El campo Apellido Materno es obligatorio.');
       return false;
     }
     if (codigoLicenciaController.text.isEmpty) {
-      showErrorModal(context, 'El campo Código Licencia es obligatorio.');
+      //showErrorModal(context, 'El campo Código Licencia es obligatorio.');
       return false;
     }
     /*
@@ -221,77 +250,6 @@ class NewPersonalController extends GetxController {
     }
     */
     return true;
-  }
-
-  // Restaurar el diseño original del modal
-  void showErrorModal(BuildContext context, String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          contentPadding: EdgeInsets.zero,
-          content: Container(
-            width: MediaQuery.of(context).size.width * 0.2,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 60,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Error',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text(
-                      'OK',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   void resetControllers() {

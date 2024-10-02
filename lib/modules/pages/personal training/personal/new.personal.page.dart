@@ -26,6 +26,7 @@ class NuevoPersonalPage extends StatelessWidget {
     super.key,
   }) {
     if (isEditing || isViewing) {
+      controller.loadPersonalPhoto(personal.inPersonalOrigen);
       controller.dniController.text = personal.numeroDocumento;
       controller.nombresController.text =
           '${personal.primerNombre} ${personal.segundoNombre}';
@@ -37,7 +38,8 @@ class NuevoPersonalPage extends StatelessWidget {
       controller.fechaIngresoController.text =
           personal.fechaIngreso?.toString() ?? '';
       controller.areaController.text = personal.area;
-      controller.codigoLicenciaController.text = personal.licenciaCategoria;
+      controller.categoriaLicenciaController.text = personal.licenciaCategoria;
+      controller.codigoLicenciaController.text = personal.licenciaConducir;
       controller.restriccionesController.text = personal.restricciones;
       controller.fechaIngresoMinaController.text =
           personal.fechaIngresoMina?.toString() ?? '';
@@ -77,21 +79,49 @@ class NuevoPersonalPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
+          Column(
             children: [
-              CircleAvatar(
-                backgroundImage: AssetImage('assets/images/user_avatar.png'),
-                radius: 95,
-                backgroundColor: Colors.grey,
-              ),
-              SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.circle, color: Colors.green, size: 12),
-                  SizedBox(width: 5),
-                  Text("Activo", style: TextStyle(fontSize: 14)),
-                ],
-              ),
+              Obx(() {
+                if (controller.personalPhoto.value != null &&
+                    controller.personalPhoto.value!.isNotEmpty) {
+                  try {
+                    return CircleAvatar(
+                      backgroundImage:
+                          MemoryImage(controller.personalPhoto.value!),
+                      radius: 95,
+                      backgroundColor: Colors.grey,
+                    );
+                  } catch (e) {
+                    log('Error al cargar la imagen: $e');
+                    return const CircleAvatar(
+                      backgroundImage:
+                          AssetImage('assets/images/user_avatar.png'),
+                      radius: 95,
+                      backgroundColor: Colors.grey,
+                    );
+                  }
+                } else {
+                  return const CircleAvatar(
+                    backgroundImage:
+                        AssetImage('assets/images/user_avatar.png'),
+                    radius: 95,
+                    backgroundColor: Colors.grey,
+                  );
+                }
+              }),
+              const SizedBox(height: 10),
+              Obx(() {
+                String estado = controller.estadoPersonal.value;
+                Color estadoColor =
+                    estado == 'Activo' ? Colors.green : Colors.red;
+                return Row(
+                  children: [
+                    Icon(Icons.circle, color: estadoColor, size: 12),
+                    const SizedBox(width: 5),
+                    Text(estado, style: const TextStyle(fontSize: 14)),
+                  ],
+                );
+              }),
             ],
           ),
           const SizedBox(width: 30),
@@ -216,7 +246,7 @@ class NuevoPersonalPage extends StatelessWidget {
               Expanded(
                 child: CustomTextField(
                   label: "Categoria Licencia",
-                  controller: controller.categoriaLicenciaController ,
+                  controller: controller.categoriaLicenciaController,
                   isReadOnly: true,
                   isRequired: false,
                 ),
@@ -252,14 +282,14 @@ class NuevoPersonalPage extends StatelessWidget {
                   label: "Fecha de Revalidación",
                   controller: controller.fechaRevalidacionController,
                   icon: Icons.calendar_today,
-                  isReadOnly: isViewing,
-                  isRequired: !isViewing,
-                  onIconPressed: () {
-                    if (!isViewing) {
-                      _selectDate(
-                          context, controller.fechaRevalidacionController);
-                    }
-                  },
+                  isReadOnly: true,
+                  isRequired: false,
+                  // onIconPressed: () {
+                  //   if (!isViewing) {
+                  //     _selectDate(
+                  //         context, controller.fechaRevalidacionController);
+                  //   }
+                  // },
                 ),
               ),
             ],
@@ -278,7 +308,7 @@ class NuevoPersonalPage extends StatelessWidget {
                 child: Row(
                   children: [
                     Checkbox(
-                      value: true,
+                      value: controller.isOperacionMina,
                       onChanged: isViewing ? null : (value) {},
                     ),
                     const Text("Operaciones mina"),
@@ -289,7 +319,7 @@ class NuevoPersonalPage extends StatelessWidget {
                 child: Row(
                   children: [
                     Checkbox(
-                      value: true, // Control para el valor
+                      value: controller.isZonaPlataforma,
                       onChanged: isViewing ? null : (value) {},
                     ),
                     const Text("Zonas o plataforma"),
@@ -387,13 +417,13 @@ class NuevoPersonalPage extends StatelessWidget {
             if (success) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text("Operación de $accion completada exitosamente."),
+                  content:
+                      Text("Operación de $accion completada exitosamente."),
                   backgroundColor: Colors.green,
                 ),
               );
               onCancel();
-            }
-            else {
+            } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text("Error al intentar $accion la persona."),
@@ -407,7 +437,6 @@ class NuevoPersonalPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           ),
           child: const Text("Guardar", style: TextStyle(color: Colors.white)),
-
         ),
       ],
     );
@@ -463,7 +492,7 @@ class NuevoPersonalPage extends StatelessWidget {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
-      controller.text = DateFormat('yyyy-MM-dd').format(picked);
+      controller.text = DateFormat('dd/MM/yyy').format(picked);
       //controller.text = picked.toString();
     }
   }

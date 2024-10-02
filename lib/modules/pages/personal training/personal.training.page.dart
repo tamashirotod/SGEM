@@ -17,7 +17,6 @@ import 'package:sgem/shared/widgets/delete/widget.delete.personal.dart';
 class PersonalSearchPage extends StatelessWidget {
   const PersonalSearchPage({super.key});
 
-
   @override
   Widget build(BuildContext context) {
     final PersonalSearchController controller =
@@ -386,7 +385,7 @@ class PersonalSearchPage extends StatelessWidget {
                 return Text('Error: ${snapshot.error}');
               } else {
                 // Si no hay errores, muestra la tabla de resultados
-                return _buildResultsTable(controller);
+                return _buildResultsTable(controller, context);
               }
             },
           ),
@@ -527,7 +526,8 @@ class PersonalSearchPage extends StatelessWidget {
     ];
   }
 
-  Widget _buildResultsTable(PersonalSearchController controller) {
+  Widget _buildResultsTable(
+      PersonalSearchController controller, BuildContext context) {
     return Obx(() {
       if (controller.personalResults.isEmpty) {
         return const Center(child: Text("No se encontraron resultados"));
@@ -546,7 +546,6 @@ class PersonalSearchPage extends StatelessWidget {
           DataColumn(label: Text('Estado')),
           DataColumn(label: Text('Acciones')),
         ],
-        //TODO: controller.personalResults
         rows: rowsToShow.map((personal) {
           String estado = personal.estado.nombre;
           return DataRow(cells: [
@@ -584,9 +583,9 @@ class PersonalSearchPage extends StatelessWidget {
                       }),
                       _buildIconButton(Icons.delete, AppTheme.errorColor,
                           () async {
+                        controller.selectedPersonal.value = personal;
                         String motivoEliminacion = '';
 
-                        // Mostrar modal para ingresar el motivo de eliminación
                         await showModalBottomSheet(
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
@@ -621,7 +620,6 @@ class PersonalSearchPage extends StatelessWidget {
                         if (controller.selectedPersonal.value != null) {
                           String? nombreCompleto =
                               controller.selectedPersonal.value!.nombreCompleto;
-
                           await showModalBottomSheet(
                             isScrollControlled: true,
                             backgroundColor: Colors.transparent,
@@ -660,24 +658,49 @@ class PersonalSearchPage extends StatelessWidget {
                             Get.put(NewPersonalController());
 
                         try {
-                          // TODO: Eliminar persona
-                          /*
-                          await controllerNew.gestionarPersona(
+                          bool success = await controllerNew.gestionarPersona(
                             accion: 'eliminar',
                             motivoEliminacion: motivoEliminacion,
-                          );
-                          */
-                          await showModalBottomSheet(
-                            isScrollControlled: true,
-                            backgroundColor: Colors.transparent,
-                            enableDrag: false,
                             context: Get.context!,
-                            builder: (context) {
-                              return const SuccessDeleteWidget();
-                            },
                           );
+
+                          if (success) {
+                            await showModalBottomSheet(
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              enableDrag: false,
+                              context: Get.context!,
+                              builder: (context) {
+                                return const SuccessDeleteWidget();
+                              },
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text("Persona eliminada exitosamente."),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+
+                            Get.toNamed('/buscarEntrenamiento');
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    "Error al eliminar la persona. Intenta nuevamente."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
                         } catch (e) {
                           log('Error eliminando la persona: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text("Error eliminando la persona: $e"),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                         }
                       }),
                       _buildIconButton(
