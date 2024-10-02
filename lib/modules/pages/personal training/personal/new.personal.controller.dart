@@ -27,25 +27,17 @@ class NewPersonalController extends GetxController {
       TextEditingController();
   final TextEditingController fechaRevalidacionController =
       TextEditingController();
-  final TextEditingController operacionMinaController = TextEditingController();
-  final TextEditingController zonaPlataformaController =
-      TextEditingController();
   final TextEditingController restriccionesController = TextEditingController();
 
   final PersonalService personalService = PersonalService();
+  var selectedPersonal = Rxn<Personal>();
+
   Personal? personalData;
   Rxn<Uint8List?> personalPhoto = Rxn<Uint8List?>();
   var estadoPersonal = 'Cesado'.obs;
 
-  bool get isOperacionMina => operacionMinaController.text == 'S';
-  set isOperacionMina(bool value) {
-    operacionMinaController.text = value ? 'S' : 'N';
-  }
-
-  bool get isZonaPlataforma => zonaPlataformaController.text == 'S';
-  set isZonaPlataforma(bool value) {
-    zonaPlataformaController.text = value ? 'S' : 'N';
-  }
+  RxBool isOperacionMina = false.obs;
+  RxBool isZonaPlataforma = false.obs;
 
   Future<void> loadPersonalPhoto(int idOrigen) async {
     try {
@@ -106,16 +98,15 @@ class NewPersonalController extends GetxController {
     categoriaLicenciaController.text = personal.licenciaCategoria;
     codigoLicenciaController.text = personal.licenciaConducir;
     restriccionesController.text = personal.restricciones;
-    operacionMinaController.text = personal.operacionMina;
-    zonaPlataformaController.text = personal.zonaPlataforma;
+
+    isOperacionMina.value = personal.operacionMina == 'S';
+    isZonaPlataforma.value = personal.zonaPlataforma == 'S';
 
     if (personal.estado.nombre == 'Activo') {
       estadoPersonal.value = 'Activo';
     } else {
       estadoPersonal.value = 'Cesado';
     }
-    log('Controladores llenados con éxito');
-    log('Estado del personal: ${estadoPersonal.value}');
   }
 
   Future<bool> gestionarPersona({
@@ -123,11 +114,48 @@ class NewPersonalController extends GetxController {
     String? motivoEliminacion,
     required BuildContext context,
   }) async {
+    log('Gestionando persona con la acción: $accion');
+/*
     if (!validate(context)) {
+      log('Datos incompletos');
       return false;
     }
+*/
     try {
-      log('Intentando gestionar persona...');
+      String _obtenerPrimerNombre(String nombres) {
+        List<String> nombresSplit = nombres.split(' ');
+        return nombresSplit.isNotEmpty ? nombresSplit.first : '';
+      }
+
+      String _obtenerSegundoNombre(String nombres) {
+        List<String> nombresSplit = nombres.split(' ');
+        return nombresSplit.length > 1 ? nombresSplit[1] : '';
+      }
+
+      String _verificarTexto(String texto) {
+        return texto.isNotEmpty ? texto : '';
+      }
+
+      DateTime? _parsearFecha(String fechaTexto) {
+        return fechaTexto.isNotEmpty
+            ? DateFormat('yyyy-MM-dd').parse(fechaTexto)
+            : null;
+      }
+
+      personalData!
+        ..primerNombre = _obtenerPrimerNombre(nombresController.text)
+        ..segundoNombre = _obtenerSegundoNombre(nombresController.text)
+        ..apellidoPaterno = _verificarTexto(apellidoPaternoController.text)
+        ..apellidoMaterno = _verificarTexto(apellidoMaternoController.text)
+        ..cargo = _verificarTexto(puestoTrabajoController.text)
+        ..fechaIngreso = _parsearFecha(fechaIngresoController.text)
+        ..fechaIngresoMina = _parsearFecha(fechaIngresoMinaController.text)
+        ..licenciaVencimiento = _parsearFecha(fechaRevalidacionController.text)
+        ..operacionMina = isOperacionMina.value ? 'S' : 'N'
+        ..zonaPlataforma = isZonaPlataforma.value ? 'S' : 'N'
+        ..restricciones = _verificarTexto(restriccionesController.text);
+
+      /*
       personalData!
         ..primerNombre = nombresController.text.split(' ').first
         ..segundoNombre = nombresController.text.split(' ').length > 1
@@ -159,31 +187,23 @@ class NewPersonalController extends GetxController {
         ..licenciaVencimiento = fechaRevalidacionController.text.isNotEmpty
             ? DateFormat('dd/MM/yyyy').parse(fechaRevalidacionController.text)
             : null
-        ..operacionMina = operacionMinaController.text.isNotEmpty
-            ? operacionMinaController.text
-            : ''
-        ..zonaPlataforma = zonaPlataformaController.text.isNotEmpty
-            ? zonaPlataformaController.text
-            : ''
+        ..operacionMina = isOperacionMina.value ? 'S' : 'N'
+        ..zonaPlataforma = isZonaPlataforma.value ? 'S' : 'N'
         ..restricciones = restriccionesController.text.isNotEmpty
             ? restriccionesController.text
-            : '';
+            : '';*/
 
       if (accion == 'eliminar') {
-        log('Preparando datos para eliminar');
         personalData!
           ..eliminado = 'S'
           ..motivoElimina = motivoEliminacion ?? 'Sin motivo'
           ..usuarioElimina = 'usuarioActual';
       }
 
-      log('Datos de la persona antes de eliminar: ${personalData!.toJson()}');
-
       final response = await _accionPersona(accion);
 
       if (response.success) {
         log('Acción $accion realizada exitosamente');
-        //Get.toNamed('/buscarEntrenamiento');
         return true;
       } else {
         log('Acción $accion fallida: ${response.message}');
@@ -218,37 +238,22 @@ class NewPersonalController extends GetxController {
 
   //Validaciones
   bool validate(BuildContext context) {
+    /*
     if (dniController.text.isEmpty || dniController.text.length != 8) {
-      //showErrorModal(
-      //  context, 'El campo DNI es obligatorio y debe contener 8 dígitos.');
       return false;
     }
     if (nombresController.text.isEmpty) {
-      //showErrorModal(context, 'El campo Nombres es obligatorio.');
       return false;
     }
     if (apellidoPaternoController.text.isEmpty) {
-      //showErrorModal(context, 'El campo Apellido Paterno es obligatorio.');
       return false;
     }
     if (apellidoMaternoController.text.isEmpty) {
-      //showErrorModal(context, 'El campo Apellido Materno es obligatorio.');
       return false;
-    }
+    }*/
     if (codigoLicenciaController.text.isEmpty) {
-      //showErrorModal(context, 'El campo Código Licencia es obligatorio.');
       return false;
     }
-    /*
-    if (fechaIngresoMinaController.text.isNotEmpty &&
-        DateTime.parse(fechaIngresoMinaController.text)
-            .isBefore(DateTime.parse(fechaIngresoController.text)))
-    {
-      showErrorModal(context,
-          'La fecha de ingreso a mina no puede ser anterior a la fecha de ingreso a la empresa.');
-      return false;
-    }
-    */
     return true;
   }
 
@@ -265,8 +270,6 @@ class NewPersonalController extends GetxController {
     codigoLicenciaController.clear();
     fechaIngresoMinaController.clear();
     fechaRevalidacionController.clear();
-    operacionMinaController.clear();
-    zonaPlataformaController.clear();
     restriccionesController.clear();
   }
 }

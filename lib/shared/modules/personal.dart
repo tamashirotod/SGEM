@@ -88,8 +88,8 @@ class Personal {
       inPersonalOrigen: json['InPersonalOrigen'] ?? 0,
       fechaIngresoMina: parseDate(json['FechaIngresoMina']),
       licenciaConducir: json['LicenciaConducir'] ?? "",
-      operacionMina: json['OperacionMina'] ?? "",
-      zonaPlataforma: json['ZonaPlataforma'] ?? "",
+      operacionMina: json['OperacionMina'] ?? "S",
+      zonaPlataforma: json['ZonaPlataforma'] ?? "S",
       restricciones: json['Restricciones'] ?? "",
       usuarioRegistro: json['UsuarioRegistro'] ?? "",
       usuarioModifica: json['UsuarioModifica'] ?? "",
@@ -103,7 +103,7 @@ class Personal {
       estado: json['Estado'] != null
           ? Estado.fromJson(json['Estado'])
           : Estado(key: 0, nombre: ""),
-      eliminado: json['Eliminado'] ?? "",
+      eliminado: json['Eliminado'] ?? "S",
       motivoElimina: json['MotivoElimina'] ?? "",
       usuarioElimina: json['UsuarioElimina'] ?? "",
       apellidoPaterno: json['ApellidoPaterno'] ?? "",

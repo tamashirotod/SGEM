@@ -649,21 +649,19 @@ class PersonalSearchPage extends StatelessWidget {
                           log('Error: No hay personal seleccionado');
                           return;
                         }
-
                         if (!confirmarEliminar) {
                           return;
                         }
-
                         NewPersonalController controllerNew =
                             Get.put(NewPersonalController());
-
+                        controllerNew.personalData =
+                            controller.selectedPersonal.value;
                         try {
                           bool success = await controllerNew.gestionarPersona(
                             accion: 'eliminar',
                             motivoEliminacion: motivoEliminacion,
                             context: Get.context!,
                           );
-
                           if (success) {
                             await showModalBottomSheet(
                               isScrollControlled: true,

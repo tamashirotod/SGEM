@@ -27,6 +27,7 @@ class NuevoPersonalPage extends StatelessWidget {
   }) {
     if (isEditing || isViewing) {
       controller.loadPersonalPhoto(personal.inPersonalOrigen);
+      controller.personalData = personal;
       controller.dniController.text = personal.numeroDocumento;
       controller.nombresController.text =
           '${personal.primerNombre} ${personal.segundoNombre}';
@@ -45,6 +46,11 @@ class NuevoPersonalPage extends StatelessWidget {
           personal.fechaIngresoMina?.toString() ?? '';
       controller.fechaRevalidacionController.text =
           personal.licenciaVencimiento?.toString() ?? '';
+
+      controller.isOperacionMina.value = personal.operacionMina == 'S';
+      controller.isZonaPlataforma.value = personal.zonaPlataforma == 'S';
+      controller.estadoPersonal.value =
+          personal.estado.nombre == 'Activo' ? 'Activo' : 'Cesado';
     }
   }
 
@@ -284,12 +290,6 @@ class NuevoPersonalPage extends StatelessWidget {
                   icon: Icons.calendar_today,
                   isReadOnly: true,
                   isRequired: false,
-                  // onIconPressed: () {
-                  //   if (!isViewing) {
-                  //     _selectDate(
-                  //         context, controller.fechaRevalidacionController);
-                  //   }
-                  // },
                 ),
               ),
             ],
@@ -307,10 +307,15 @@ class NuevoPersonalPage extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    Checkbox(
-                      value: controller.isOperacionMina,
-                      onChanged: isViewing ? null : (value) {},
-                    ),
+                    Obx(() => Checkbox(
+                          value: controller.isOperacionMina.value,
+                          onChanged: isViewing
+                              ? null
+                              : (value) {
+                                  controller.isOperacionMina.value =
+                                      value ?? false;
+                                },
+                        )),
                     const Text("Operaciones mina"),
                   ],
                 ),
@@ -318,10 +323,15 @@ class NuevoPersonalPage extends StatelessWidget {
               Expanded(
                 child: Row(
                   children: [
-                    Checkbox(
-                      value: controller.isZonaPlataforma,
-                      onChanged: isViewing ? null : (value) {},
-                    ),
+                    Obx(() => Checkbox(
+                          value: controller.isZonaPlataforma.value,
+                          onChanged: isViewing
+                              ? null
+                              : (value) {
+                                  controller.isZonaPlataforma.value =
+                                      value ?? false;
+                                },
+                        )),
                     const Text("Zonas o plataforma"),
                   ],
                 ),
@@ -456,6 +466,7 @@ class NuevoPersonalPage extends StatelessWidget {
   }
 
   Widget _buildDropdownGuardia(PersonalSearchController controller) {
+    controller.selectedGuardiaKey.value = personal.guardia.key;
     return Obx(() {
       if (controller.guardiaOptions.isEmpty) {
         return const CircularProgressIndicator();
