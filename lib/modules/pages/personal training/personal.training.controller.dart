@@ -44,8 +44,6 @@ extension PersonalSearchScreenExtension on PersonalSearchScreen {
 }
 
 class PersonalSearchController extends GetxController {
-
-
   final codigoMCPController = TextEditingController();
   final documentoIdentidadController = TextEditingController();
   final nombresController = TextEditingController();
@@ -72,6 +70,26 @@ class PersonalSearchController extends GetxController {
   void onInit() {
     cargarGuardiaOptions();
     super.onInit();
+  }
+
+  
+  Future<Uint8List?> loadPersonalPhoto(int idOrigen) async {
+    try {
+      final photoResponse =
+          await personalService.obtenerFotoPorCodigoOrigen(idOrigen);
+      log(photoResponse.data.toString());
+
+      if (photoResponse.success && photoResponse.data != null) {
+        log('Foto del personal cargada con éxito');
+        return photoResponse.data;
+      } else {
+        log('Error al cargar la foto: ${photoResponse.message}');
+        return null;
+      }
+    } catch (e) {
+      log('Error al cargar la foto del personal: $e');
+      return null;
+    }
   }
 
   Future<void> cargarGuardiaOptions() async {
