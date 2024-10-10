@@ -9,7 +9,6 @@ import 'package:sgem/config/api/api.maestro.detail.dart';
 import 'package:sgem/config/api/api.personal.dart';
 import 'package:sgem/shared/modules/maestro.detail.dart';
 import 'package:sgem/shared/modules/personal.dart';
-import 'package:sgem/shared/modules/registrar.training.dart';
 
 enum PersonalSearchScreen {
   none,
@@ -51,7 +50,7 @@ class PersonalSearchController extends GetxController {
 
   final personalService = PersonalService();
   final maestroDetalleService = MaestroDetalleService();
-  
+
   var isExpanded = true.obs;
   var screen = PersonalSearchScreen.none.obs;
 
@@ -72,7 +71,7 @@ class PersonalSearchController extends GetxController {
     searchPersonal(pageNumber: currentPage.value, pageSize: rowsPerPage.value);
     super.onInit();
   }
-  
+
   Future<Uint8List?> loadPersonalPhoto(int idOrigen) async {
     try {
       final photoResponse =
@@ -91,6 +90,7 @@ class PersonalSearchController extends GetxController {
       return null;
     }
   }
+
   Future<void> cargarGuardiaOptions() async {
     try {
       var response =

@@ -304,13 +304,11 @@ class NewPersonalController extends GetxController {
             'La fecha de ingreso a la mina debe ser mayor que la fecha de ingreso a la empresa.');
       }
     }
-
     if (codigoLicenciaController.text.isEmpty ||
         codigoLicenciaController.text.length != 9) {
       errores
           .add('El código de licencia debe tener 9 caracteres alfanuméricos.');
     }
-
     if (selectedGuardiaKey.value == null) {
       errores.add('Debe seleccionar una guardia.');
     }
@@ -341,6 +339,7 @@ class NewPersonalController extends GetxController {
             archivosAdjuntos.add({
               'nombre': fileName,
               'bytes': fileBytes,
+              'new': true,
             });
             log('Documento adjuntado correctamente: $fileName');
           }
@@ -354,8 +353,8 @@ class NewPersonalController extends GetxController {
   }
 
   void eliminarArchivo(String nombreArchivo) {
-    archivosAdjuntos
-        .removeWhere((archivo) => archivo['nombre'] == nombreArchivo);
+    archivosAdjuntos.removeWhere((archivo) =>
+        archivo['nombre'] == nombreArchivo && archivo['nuevo'] == true);
     log('Archivo $nombreArchivo eliminado');
   }
 
@@ -367,8 +366,10 @@ class NewPersonalController extends GetxController {
       if (personalResponse.success && personalResponse.data!.isNotEmpty) {
         int origenKey = personalResponse.data!.first.key;
         log('Key del personal obtenida: $origenKey');
-
-        for (var archivo in archivosAdjuntos) {
+        var archivosNuevos = archivosAdjuntos
+            .where((archivo) => archivo['nuevo'] == true)
+            .toList();
+        for (var archivo in archivosNuevos) {
           try {
             String datosBase64 = base64Encode(archivo['bytes']);
             String extension = archivo['nombre'].split('.').last;
@@ -387,6 +388,7 @@ class NewPersonalController extends GetxController {
 
             if (response.success) {
               log('Archivo ${archivo['nombre']} registrado con éxito');
+              archivo['nuevo'] = false;
             } else {
               log('Error al registrar archivo ${archivo['nombre']}: ${response.message}');
             }
