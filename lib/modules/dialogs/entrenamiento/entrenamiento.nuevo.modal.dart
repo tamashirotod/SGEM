@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:sgem/config/theme/app_theme.dart';
 import 'package:sgem/modules/dialogs/entrenamiento/entrenamiento.nuevo.controller.dart';
+import 'package:sgem/modules/pages/personal.training/training/training.personal.controller.dart';
+import 'package:sgem/shared/modules/entrenamiento.modulo.dart';
 import 'package:sgem/shared/modules/maestro.detail.dart';
 import 'package:sgem/shared/modules/personal.dart';
-import 'package:sgem/shared/modules/registrar.training.dart';
 import 'package:sgem/shared/utils/Extensions/widgetExtensions.dart';
 import 'package:sgem/shared/widgets/custom.dropdown.dart';
 import 'package:sgem/shared/widgets/custom.textfield.dart';
@@ -15,8 +17,31 @@ class EntrenamientoNuevoModal extends StatelessWidget {
       Get.put(EntrenamientoNuevoController());
   final double paddingVertical = 20;
   final VoidCallback close;
+  final bool isEdit;
+  final EntrenamientoModulo? training;
 
-  EntrenamientoNuevoModal({super.key, required this.data, required this.close});
+  EntrenamientoNuevoModal({
+    super.key,
+    required this.data,
+    required this.close,
+    this.isEdit = false,
+    this.training,
+  }) {
+    if (isEdit && training != null && controller.equipoDetalle.isNotEmpty) {
+      controller.equipoSelected.value = controller.equipoDetalle.firstWhere(
+          (element) => element.key == training!.inEquipo,
+          orElse: () => controller.equipoDetalle.first);
+      controller.condicionSelected.value = controller.condicionDetalle
+          .firstWhere((element) => element.key == training!.inCondicion,
+              orElse: () => controller.condicionDetalle.first);
+
+      controller.fechaInicioEntrenamiento.text = DateFormat('yyyy-MM-dd')
+          .format(DateTime.parse(training!.fechaInicio.toString()));
+      controller.fechaTerminoEntrenamiento.text = DateFormat('yyyy-MM-dd')
+          .format(DateTime.parse(training!.fechaTermino.toString()));
+      controller.obtenerArchivosRegistrados(training!.key);
+    }
+  }
 
   Widget content(BuildContext context) {
     return Column(
@@ -34,32 +59,37 @@ class EntrenamientoNuevoModal extends StatelessWidget {
             )),
             SizedBox(width: paddingVertical),
             Expanded(
-              child: customTextFieldDate("Fecha de inicio dd/mm/yyy",
+              child: customTextFieldDate("Fecha de inicio dd/MM/yyyy",
                   controller.fechaInicioEntrenamiento, true, false, context),
             )
           ],
         ).padding(
-            EdgeInsets.only(left: paddingVertical, right: paddingVertical)),
+          EdgeInsets.only(
+            left: paddingVertical,
+            right: paddingVertical,
+          ),
+        ),
         Row(
           children: [
             Expanded(
                 child: CustomGenericDropdown<MaestroDetalle>(
               hintText: "Condicion",
-              options: controller.condicionDetalleList,
+              options: controller.condicionDetalle,
               selectedValue: controller.condicionSelectedBinding,
               isSearchable: false,
               isRequired: true,
             )),
             SizedBox(width: paddingVertical),
             Expanded(
-                child: customTextFieldDate("Fecha de termino dd/mm/yyy",
+                child: customTextFieldDate("Fecha de termino dd/MM/yyyy",
                     controller.fechaTerminoEntrenamiento, true, false, context))
           ],
         ).padding(
             EdgeInsets.only(left: paddingVertical, right: paddingVertical)),
-        //adjuntarArchivoText().padding(const EdgeInsets.only(bottom: 10)),
-        //adjuntarDocumentoPDF(controller),
-        customButtonsCancelAndAcept(() => close(), () => registertraining())
+        if (isEdit)
+          adjuntarArchivoText().padding(const EdgeInsets.only(bottom: 10)),
+        isEdit ? adjuntarDocumentoPDF(controller) : Container(),
+        customButtonsCancelAndAcept(() => close(), () => registerTraining())
       ],
     ).padding(const EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 10));
   }
@@ -68,7 +98,12 @@ class EntrenamientoNuevoModal extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       return Scaffold(
-              appBar: AppBar(title: const Text("Nuevo Entrenamiento")),
+              appBar: AppBar(
+                title: isEdit
+                    ? const Text("Editar Entrenamiento")
+                    : const Text("Nuevo Entrenamiento"),
+                backgroundColor: AppTheme.backgroundBlue,
+              ),
               body: (controller.isLoading.value)
                   ? const Center(
                       child: CircularProgressIndicator(),
@@ -78,22 +113,63 @@ class EntrenamientoNuevoModal extends StatelessWidget {
     });
   }
 
-  void registertraining() {
+  void registerTraining() {
     if (controller.equipoSelected.value != null &&
         controller.condicionSelected.value != null) {
-      controller.registertraining(
-          RegisterTraining(
-            inTipoActividad: 1,
-            inPersona: data.key,
-            inEquipo: controller.equipoSelected.value!.key,
-            inCondicion: controller.condicionSelected.value!.key,
-            fechaInicio: controller
-                .transformDate(controller.fechaInicioEntrenamiento.text),
-            fechaTermino: controller
-                .transformDate(controller.fechaTerminoEntrenamiento.text),
-          ), (isSucces) {
-        close();
-      });
+      EntrenamientoModulo newTraining = EntrenamientoModulo(
+        key: isEdit ? training!.key : 0, // Usar la key existente si es edición
+        inTipoActividad: 1,
+        inCapacitacion: 0,
+        inModulo: 0,
+        modulo: Entidad(key: 0, nombre: ''),
+        inTipoPersona: 1,
+        inPersona: data.key,
+        inActividadEntrenamiento: 0,
+        inCategoria: 0,
+        inEquipo: controller.equipoSelected.value!.key,
+        equipo: Entidad(key: controller.equipoSelected.value!.key, nombre: ''),
+        inEntrenador: 0,
+        entrenador: Entidad(key: 0, nombre: ''),
+        inEmpresaCapacitadora: 0,
+        inCondicion: controller.condicionSelected.value!.key,
+        condicion:
+            Entidad(key: controller.condicionSelected.value!.key, nombre: ''),
+        fechaInicio:
+            controller.transformDate(controller.fechaInicioEntrenamiento.text),
+        fechaTermino:
+            controller.transformDate(controller.fechaTerminoEntrenamiento.text),
+        fechaExamen: null,
+        fechaRealMonitoreo: null,
+        fechaProximoMonitoreo: null,
+        inNotaTeorica: 0,
+        inNotaPractica: 0,
+        inTotalHoras: 0,
+        inHorasAcumuladas: 0,
+        inHorasMinestar: 0,
+        inEstado: 1,
+        comentarios: '',
+        eliminado: '',
+        motivoEliminado: '',
+      );
+
+      final TrainingPersonalController trainingPersonalController = Get.find();
+      if (isEdit) {
+        trainingPersonalController
+            .actualizarEntrenamiento(newTraining)
+            .then((isSuccess) {
+          if (isSuccess) {
+            trainingPersonalController.fetchTrainings(data.key);
+            close();
+          }
+        });
+      } else {
+        controller.registertraining(newTraining, (isSuccess) {
+          if (isSuccess) {
+            trainingPersonalController.fetchTrainings(data.key);
+            close();
+          }
+        });
+      }
     }
   }
 
@@ -106,7 +182,7 @@ class EntrenamientoNuevoModal extends StatelessWidget {
         Text("Adjuntar archivo:"),
         SizedBox(width: 10),
         Text(
-          "(Archivo adjunto peso máx: 4MB)",
+          "(Archivo adjunto peso máx: 8MB)",
           style: TextStyle(color: Colors.grey),
         ),
       ],
@@ -131,7 +207,7 @@ class EntrenamientoNuevoModal extends StatelessWidget {
       ElevatedButton(
         onPressed: onSave,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue,
+          backgroundColor: AppTheme.primaryColor,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
         child: const Text(
@@ -145,31 +221,38 @@ class EntrenamientoNuevoModal extends StatelessWidget {
 
 Widget adjuntarDocumentoPDF(EntrenamientoNuevoController controller) {
   return Obx(() {
-    if (controller.documentoAdjuntoNombre.value.isNotEmpty) {
-      return Row(
-        children: [
-          TextButton.icon(
-            onPressed: () {
-              controller.eliminarDocumento();
-            },
-            icon: const Icon(Icons.close, color: Colors.red),
-            label: Text(
-              controller.documentoAdjuntoNombre.value,
-              style: const TextStyle(color: Colors.red),
-            ),
-          ),
-        ],
+    if (controller.isLoadingFiles.value) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (controller.archivosAdjuntos.isNotEmpty) {
+      return Column(
+        children: controller.archivosAdjuntos.map((archivo) {
+          return Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  controller.eliminarArchivo(archivo['nombre']);
+                },
+                icon: const Icon(Icons.close, color: Colors.red),
+                label: Text(
+                  archivo['nombre'],
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
       );
     } else {
       return Row(
         children: [
           TextButton.icon(
             onPressed: () {
-              controller.adjuntarDocumento();
+              controller.adjuntarDocumentos();
             },
-            icon: const Icon(Icons.attach_file, color: Colors.blue),
+            icon: const Icon(Icons.attach_file, color: Colors.grey),
             label: const Text("Adjuntar Documento",
-                style: TextStyle(color: Colors.blue)),
+                style: TextStyle(color: Colors.grey)),
           ),
         ],
       );
@@ -183,19 +266,17 @@ Widget customTextFieldDate(
     bool isEditing,
     bool isViewing,
     BuildContext context) {
-  return Expanded(
-    child: CustomTextField(
-      label: label,
-      controller: fechaIngresoMinaController,
-      icon: const Icon(Icons.calendar_today),
-      isReadOnly: isViewing,
-      isRequired: !isViewing,
-      onIconPressed: () {
-        if (!isViewing) {
-          _selectDate(context, fechaIngresoMinaController);
-        }
-      },
-    ),
+  return CustomTextField(
+    label: label,
+    controller: fechaIngresoMinaController,
+    icon: const Icon(Icons.calendar_today),
+    isReadOnly: isViewing,
+    isRequired: !isViewing,
+    onIconPressed: () {
+      if (!isViewing) {
+        _selectDate(context, fechaIngresoMinaController);
+      }
+    },
   );
 }
 

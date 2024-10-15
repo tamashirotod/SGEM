@@ -1,12 +1,17 @@
 import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:sgem/config/theme/app_theme.dart';
+import 'package:sgem/modules/dialogs/entrenamiento/entrenamiento.nuevo.controller.dart';
 import 'package:sgem/modules/pages/personal.training/personal.training.controller.dart';
 import 'package:sgem/modules/pages/personal.training/personal/new.personal.controller.dart';
 import 'package:sgem/modules/pages/personal.training/training/training.personal.controller.dart';
-import 'package:sgem/shared/modules/training.dart';
+import 'package:sgem/shared/modules/entrenamiento.modulo.dart';
 import 'package:sgem/shared/widgets/custom.textfield.dart';
+import 'package:sgem/shared/widgets/delete/widget.delete.motivo.dart';
+import 'package:sgem/shared/widgets/delete/widget.delete.personal.confirmation.dart';
+import 'package:sgem/shared/widgets/delete/widget.delete.personal.dart';
 import 'package:sgem/shared/widgets/entrenamiento.modulo/widget.entrenamiento.modulo.nuevo.dart';
 import '../../../dialogs/entrenamiento/entrenamiento.nuevo.modal.dart';
 
@@ -100,11 +105,17 @@ class TrainingPersonalPage extends StatelessWidget {
                         'Código',
                         controllerPersonal.selectedPersonal.value?.codigoMcp ??
                             ''),
+                    const SizedBox(
+                      width: 20,
+                    ),
                     _buildCustomTextField(
                         'Nombres y Apellidos',
                         '${controllerPersonal.selectedPersonal.value?.primerNombre ?? ''} '
                             '${controllerPersonal.selectedPersonal.value?.apellidoPaterno ?? ''} '
                             '${controllerPersonal.selectedPersonal.value?.apellidoMaterno ?? ''}'),
+                    const SizedBox(
+                      width: 20,
+                    ),
                     _buildCustomTextField(
                         'Guardia',
                         controllerPersonal
@@ -202,7 +213,8 @@ class TrainingPersonalPage extends StatelessWidget {
     });
   }
 
-  Widget _buildTrainingCard(Entrenamiento training, BuildContext context) {
+  Widget _buildTrainingCard(
+      EntrenamientoModulo training, BuildContext context) {
     return Card(
       color: const Color(0xFFF2F6FF),
       elevation: 2,
@@ -220,18 +232,26 @@ class TrainingPersonalPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildCustomTextField(
-                        'Código de entrenamiento', training.key.toString()),
-                    _buildCustomTextField('Estado de avance actual',
-                        training.inModulo.toString()),
+                      'Código de entrenamiento',
+                      training.key.toString(),
+                    ),
+                    _buildCustomTextField(
+                      'Estado de avance actual',
+                      training.modulo.nombre,
+                    ),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildCustomTextField(
-                        'Equipo', training.inEquipo.toString()),
+                      'Equipo',
+                      training.equipo.nombre,
+                    ),
                     _buildCustomTextField(
-                        'Entrenador', training.inEntrenador.toString()),
+                      'Entrenador',
+                      training.entrenador.nombre,
+                    ),
                   ],
                 ),
                 Column(
@@ -242,16 +262,20 @@ class TrainingPersonalPage extends StatelessWidget {
                         const Icon(Icons.radio_button_checked,
                             color: Colors.orange),
                         const SizedBox(width: 4),
-                        _buildCustomTextField('Estado entrenamiento',
-                            training.inEstado.toString()),
+                        _buildCustomTextField(
+                          'Estado entrenamiento',
+                          _getEstadoEntrenamiento(training.inEstado),
+                        ),
                       ],
                     ),
                     Row(
                       children: [
                         const Icon(Icons.radio_button_on, color: Colors.green),
                         const SizedBox(width: 4),
-                        _buildCustomTextField('Horas de entrenamiento',
-                            '${training.inHorasAcumuladas}/${training.inTotalHoras}'),
+                        _buildCustomTextField(
+                          'Horas de entrenamiento',
+                          '${training.inHorasAcumuladas}/${training.inTotalHoras}', // Mostrar horas acumuladas y totales
+                        ),
                       ],
                     ),
                   ],
@@ -259,24 +283,226 @@ class TrainingPersonalPage extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildCustomTextField('Fecha inicio / Fin',
-                        '${training.fechaInicio} / ${training.fechaTermino}'),
-                    _buildCustomTextField('Nota teórica / práctica',
-                        '${training.inNotaTeorica} / ${training.inNotaPractica}'),
+                    _buildCustomTextField(
+                      'Fecha inicio / Fin',
+                      '${_formatDate(training.fechaInicio)} / ${_formatDate(training.fechaTermino)}', // Formatear las fechas correctamente
+                    ),
+                    _buildCustomTextField(
+                      'Nota teórica / práctica',
+                      '${training.inNotaTeorica} / ${training.inNotaPractica}', // Mostrar las notas teóricas y prácticas
+                    ),
                   ],
                 ),
                 _buildCustomTextField(
-                    'Condición', training.inCondicion.toString()),
-                _buildActionButtons(context),
+                  'Condición',
+                  training.condicion.nombre,
+                ),
+                _buildActionButtons(context, training),
               ],
             ),
+            Obx(() {
+              final modulos =
+                  controller.obtenerModulosPorEntrenamiento(training.key);
+              return ExpansionTile(
+                title: const Text('Módulos del entrenamiento',
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                children: modulos.isNotEmpty
+                    ? modulos.map((modulo) {
+                        return _buildModuleDetails(modulo);
+                      }).toList()
+                    : [
+                        const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text('No hay módulos disponibles'),
+                        )
+                      ],
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildModuleDetails(EntrenamientoModulo modulo) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 36),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  modulo.modulo.nombre,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Horas de entrenamiento:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${modulo.inHorasAcumuladas}/${modulo.inTotalHoras}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Horas minestar:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${modulo.inHorasMinestar}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Nota teórica:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${modulo.inNotaTeorica}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Nota práctica:',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  '${modulo.inNotaPractica}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
+                onPressed: () {
+                  Get.snackbar(
+                      'Editar módulo', 'Módulo actualizado correctamente',
+                      colorText: Colors.white, backgroundColor: Colors.green);
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete, color: Colors.red),
+                onPressed: () async {
+                  String motivoEliminacion = '';
+                  await showDialog(
+                    context: Get.context!,
+                    builder: (context) {
+                      return GestureDetector(
+                        onTap: () => FocusScope.of(context).unfocus(),
+                        child: Padding(
+                          padding: MediaQuery.of(context).viewInsets,
+                          child: DeleteReasonWidget(
+                            entityType: 'módulo',
+                            onCancel: () {
+                              Navigator.pop(context);
+                            },
+                            onConfirm: (motivo) {
+                              motivoEliminacion = motivo;
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  if (motivoEliminacion.isEmpty) return;
+
+                  bool confirmarEliminar = false;
+                  await showDialog(
+                    context: Get.context!,
+                    builder: (context) {
+                      return GestureDetector(
+                        onTap: () => FocusScope.of(context).unfocus(),
+                        child: Padding(
+                          padding: MediaQuery.of(context).viewInsets,
+                          child: ConfirmDeleteWidget(
+                            itemName: 'módulo',
+                            entityType: '',
+                            onCancel: () {
+                              Navigator.pop(context);
+                            },
+                            onConfirm: () {
+                              confirmarEliminar = true;
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  if (!confirmarEliminar) return;
+
+                  bool success = await controller.eliminarModulo(modulo);
+
+                  if (success) {
+                    await showDialog(
+                      context: Get.context!,
+                      builder: (context) {
+                        return const SuccessDeleteWidget();
+                      },
+                    );
+                  } else {
+                    ScaffoldMessenger.of(Get.context!).showSnackBar(
+                      const SnackBar(
+                        content: Text("Error al eliminar el módulo."),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(
+      BuildContext context, EntrenamientoModulo training) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -284,21 +510,132 @@ class TrainingPersonalPage extends StatelessWidget {
           children: [
             IconButton(
               icon: const Icon(Icons.edit, color: AppTheme.primaryColor),
-              onPressed: () {
-                // Lógica de editar
+              onPressed: () async {
+                EntrenamientoNuevoController controllerModal =
+                    Get.put(EntrenamientoNuevoController());
+                await controllerModal.getEquiposAndConditions();
+                final EntrenamientoModulo? updatedTraining = await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: Center(
+                        child: EntrenamientoNuevoModal(
+                          data: controllerPersonal.selectedPersonal.value!,
+                          isEdit: true,
+                          training: training,
+                          close: () {
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                if (updatedTraining != null) {
+                  bool success =
+                      await controller.actualizarEntrenamiento(updatedTraining);
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content:
+                            Text("Entrenamiento actualizado correctamente"),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                }
               },
             ),
             IconButton(
               icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: () {
-                // Lógica de eliminar
+              onPressed: () async {
+                String motivoEliminacion = '';
+
+                await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: Padding(
+                        padding: MediaQuery.of(context).viewInsets,
+                        child: DeleteReasonWidget(
+                          entityType: 'entrenamiento',
+                          onCancel: () {
+                            Navigator.pop(context);
+                          },
+                          onConfirm: (motivo) {
+                            motivoEliminacion = motivo;
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                if (motivoEliminacion.isEmpty) return;
+
+                bool confirmarEliminar = false;
+                await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return GestureDetector(
+                      onTap: () => FocusScope.of(context).unfocus(),
+                      child: Padding(
+                        padding: MediaQuery.of(context).viewInsets,
+                        child: ConfirmDeleteWidget(
+                          itemName: 'entrenamiento',
+                          entityType: '',
+                          onCancel: () {
+                            Navigator.pop(context);
+                          },
+                          onConfirm: () {
+                            confirmarEliminar = true;
+                            Navigator.pop(context);
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                );
+
+                if (!confirmarEliminar) return;
+                try {
+                  bool success =
+                      await controller.eliminarEntrenamiento(training);
+                  if (success) {
+                    await showDialog(
+                      context: context,
+                      builder: (context) {
+                        return const SuccessDeleteWidget();
+                      },
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text("Error al eliminar el entrenamiento."),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  log('Error eliminando el entrenamiento: $e');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Error eliminando el entrenamiento: $e"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               },
             ),
             IconButton(
               icon: const Icon(Icons.add_circle_outline,
                   color: AppTheme.primaryColor),
               onPressed: () async {
-                await showModalBottomSheet(
+                final bool? success = await showModalBottomSheet(
                   isScrollControlled: true,
                   backgroundColor: Colors.transparent,
                   enableDrag: false,
@@ -309,6 +646,7 @@ class TrainingPersonalPage extends StatelessWidget {
                       child: Padding(
                         padding: MediaQuery.of(context).viewInsets,
                         child: EntrenamientoModuloNuevo(
+                          entrenamiento: training,
                           onCancel: () {
                             Navigator.pop(context);
                           },
@@ -317,6 +655,10 @@ class TrainingPersonalPage extends StatelessWidget {
                     );
                   },
                 );
+                if (success != null && success) {
+                  controller.fetchTrainings(
+                      controllerPersonal.selectedPersonal.value!.key);
+                }
               },
             ),
           ],
@@ -355,5 +697,21 @@ class TrainingPersonalPage extends StatelessWidget {
         child: const Text("Regresar", style: TextStyle(color: Colors.white)),
       ),
     );
+  }
+
+  String _getEstadoEntrenamiento(int estado) {
+    switch (estado) {
+      case 0:
+        return 'Inactivo';
+      case 1:
+        return 'Activo';
+      default:
+        return 'Desconocido';
+    }
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Sin fecha';
+    return DateFormat('yyyy-MM-dd').format(date);
   }
 }

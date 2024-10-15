@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get_state_manager/src/rx_flutter/rx_obx_widget.dart';
 import 'package:intl/intl.dart';
+import 'package:sgem/shared/modules/entrenamiento.modulo.dart';
+import 'package:sgem/shared/modules/personal.dart';
 import 'package:sgem/shared/widgets/entrenamiento.modulo/widget.entrenamiento.modulo.nuevo.controller.dart';
 import '../../../config/theme/app_theme.dart';
 import '../custom.textfield.dart';
@@ -9,11 +11,14 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
   final EntrenamientoModuloNuevoController controller =
       EntrenamientoModuloNuevoController();
   final VoidCallback onCancel;
+  final EntrenamientoModulo entrenamiento;
 
-  EntrenamientoModuloNuevo({super.key, required this.onCancel});
+  EntrenamientoModuloNuevo(
+      {super.key, required this.onCancel, required this.entrenamiento});
 
   @override
   Widget build(BuildContext context) {
+    controller.setDatosEntrenamiento(entrenamiento);
     return Align(
       alignment: const AlignmentDirectional(0, 0),
       child: Padding(
@@ -56,8 +61,7 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
     );
   }
 
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+  Future<DateTime?> _selectDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -65,7 +69,9 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
-      controller.text = DateFormat('yyyy-MM-dd').format(picked);
+      return picked;
+    } else {
+      return null;
     }
   }
 
@@ -111,30 +117,47 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
       children: [
         Expanded(
           flex: 1,
-          child: CustomTextField(
-            label: "Responsable",
-            controller: controller.responsableController,
-            //controller: controller.dniController,
-            icon: Obx(() {
-              return controller.isLoadingResponsable.value
-                  ? const CircularProgressIndicator()
-                  : const Icon(Icons.search);
-            }),
-            // isReadOnly: isEditing || isViewing,
-            // onIconPressed: () {
-            //   if (!controller.isLoadingDni.value &&
-            //       !isEditing &&
-            //       !isViewing) {
-            //     _searchPersonalByDNI();
-            //   }
-            // },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Responsable',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              Autocomplete<Personal>(
+                optionsBuilder: (TextEditingValue textEditingValue) {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<Personal>.empty();
+                  }
+                  controller.buscarEntrenadores(textEditingValue.text);
+                  return controller.responsables;
+                },
+                displayStringForOption: (Personal entrenador) =>
+                    entrenador.nombreCompleto,
+                onSelected: (Personal entrenador) {
+                  controller.seleccionarEntrenador(entrenador);
+                },
+                fieldViewBuilder:
+                    (context, controllerField, focusNode, onFieldSubmitted) {
+                  return Obx(() {
+                    return CustomTextField(
+                      controller: controller.responsableController,
+                      icon: controller.isLoadingResponsable.value
+                          ? const CircularProgressIndicator()
+                          : const Icon(Icons.search),
+                      focusNode: focusNode,
+                      onChanged: (value) {
+                        controllerField.text = value;
+                      },
+                      label: '',
+                    );
+                  });
+                },
+              ),
+            ],
           ),
         ),
-        const SizedBox(
-          width: 20,
-        ),
+        const SizedBox(width: 20),
         const Expanded(
-          flex: 1, // El espacio estará vacío para que ocupe solo la mitad
+          flex: 1,
           child: SizedBox.shrink(),
         ),
       ],
@@ -150,9 +173,10 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
             controller: controller.fechaInicioController,
             isRequired: true,
             icon: const Icon(Icons.calendar_month),
-            onIconPressed: () {
-              _selectDate(context,
-                  controller.fechaInicioController); //cambiar controller
+            onIconPressed: () async {
+              controller.fechaInicio = await _selectDate(context);
+              controller.fechaInicioController.text =
+                  DateFormat('dd/MM/yyyy').format(controller.fechaInicio!);
             },
           ),
         ),
@@ -164,9 +188,10 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
             label: 'Fecha de termino:',
             controller: controller.fechaTerminoController, //cambiar controller
             icon: const Icon(Icons.calendar_month),
-            onIconPressed: () {
-              _selectDate(context,
-                  controller.fechaTerminoController); //cambiar controller
+            onIconPressed: () async {
+              controller.fechaTermino = await _selectDate(context);
+              controller.fechaTerminoController.text =
+                  DateFormat('dd/MM/yyyy').format(controller.fechaTermino!);
             },
           ),
         ),
@@ -225,9 +250,10 @@ class EntrenamientoModuloNuevo extends StatelessWidget {
               label: 'Fecha de examen:',
               controller: controller.fechaExamenController, //cambiar controller
               icon: const Icon(Icons.calendar_month),
-              onIconPressed: () {
-                _selectDate(context,
-                    controller.fechaExamenController); //cambiar controller
+              onIconPressed: () async {
+                controller.fechaExamen = await _selectDate(context);
+                controller.fechaExamenController.text =
+                    DateFormat('dd/MM/yyyy').format(controller.fechaExamen!);
               },
             ),
           ],

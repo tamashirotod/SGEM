@@ -18,7 +18,8 @@ enum PersonalSearchScreen {
   viewPersonal,
   carnetPersonal,
   diplomaPersonal,
-  certificadoPersonal
+  certificadoPersonal,
+  actualizacionMasiva
 }
 
 extension PersonalSearchScreenExtension on PersonalSearchScreen {
@@ -36,6 +37,8 @@ extension PersonalSearchScreenExtension on PersonalSearchScreen {
         return "Visualizar";
       case PersonalSearchScreen.carnetPersonal:
         return "Carnet del Personal";
+      case PersonalSearchScreen.actualizacionMasiva:
+        return "Actualizacion Masiva";
       default:
         return "Entrenamientos";
     }
@@ -150,6 +153,7 @@ class PersonalSearchController extends GetxController {
           totalRecords.value = result['TotalRecords'] as int;
           rowsPerPage.value = result['PageSize'] as int;
           isExpanded.value = false;
+
           log('Resultados obtenidos: ${personalResults.length}');
         } catch (e) {
           log('Error al procesar la respuesta: $e');
@@ -332,6 +336,10 @@ class PersonalSearchController extends GetxController {
   void showTraining(Personal personal) {
     selectedPersonal.value = personal;
     screen.value = PersonalSearchScreen.trainingForm;
+  }
+
+  void showActualizacionMasiva() {
+    screen.value = PersonalSearchScreen.actualizacionMasiva;
   }
 
   void showCarnet(Personal personal) {

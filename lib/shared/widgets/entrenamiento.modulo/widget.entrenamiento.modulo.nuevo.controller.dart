@@ -1,5 +1,11 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get/get_rx/get_rx.dart';
+import 'package:sgem/config/api/api.modulo.maestro.dart';
+import 'package:sgem/config/api/api.personal.dart';
+import 'package:sgem/shared/modules/entrenamiento.modulo.dart';
+import 'package:sgem/shared/modules/personal.dart';
 import '../alert/widget.alert.dart';
 
 class EntrenamientoModuloNuevoController extends GetxController {
@@ -20,10 +26,53 @@ class EntrenamientoModuloNuevoController extends GetxController {
   TextEditingController horasMinestarController =
       TextEditingController(text: '0');
 
+  DateTime? fechaInicio;
+  DateTime? fechaTermino;
+  DateTime? fechaExamen;
+
+  ModuloMaestroService moduloMaestroService = ModuloMaestroService();
+  PersonalService personalService = PersonalService();
+
   List<String> errores = [];
 
   RxBool isSaving = false.obs;
   RxBool isLoadingResponsable = false.obs;
+  RxList<Personal> responsables = <Personal>[].obs;
+  Personal? responsableSeleccionado;
+
+  late EntrenamientoModulo entrenamiento;
+
+  void buscarEntrenadores(String query) async {
+    if (query.isEmpty) {
+      responsables.clear();
+      return;
+    }
+    isLoadingResponsable.value = true;
+    final result = await personalService.listarEntrenadores();
+    if (result.success) {
+      responsables.value = result.data!
+          .where((entrenador) =>
+              entrenador.nombreCompleto
+                  .toLowerCase()
+                  .contains(query.toLowerCase()) ||
+              entrenador.apellidoPaterno
+                  .toLowerCase()
+                  .contains(query.toLowerCase()))
+          .toList();
+    }
+    isLoadingResponsable.value = false;
+  }
+
+  void seleccionarEntrenador(Personal responsable) {
+    responsableSeleccionado = responsable;
+    responsableController.text = responsable.nombreCompleto;
+  }
+
+  void setDatosEntrenamiento(EntrenamientoModulo entrenamiento) {
+    this.entrenamiento = entrenamiento;
+    fechaInicioController.text = entrenamiento.fechaInicio.toString();
+    fechaTerminoController.text = entrenamiento.fechaTermino.toString();
+  }
 
   void resetControllers() {
     fechaInicioController.clear();
@@ -38,9 +87,10 @@ class EntrenamientoModuloNuevoController extends GetxController {
 
     errores.clear();
 
-    isSaving.value= false;
-    isLoadingResponsable.value=false;
+    isSaving.value = false;
+    isLoadingResponsable.value = false;
   }
+
 //Validaciones
   bool validar(BuildContext context) {
     bool respuesta = true;
@@ -92,17 +142,67 @@ class EntrenamientoModuloNuevoController extends GetxController {
   }
 
   Future<bool> registrarModulo(BuildContext context) async {
-    if (!validar(context)) {
-      _mostrarErroresValidacion(context, errores);
-      return false;
-    }
+    EntrenamientoModulo modulo = EntrenamientoModulo(
+      key: 0,
+      inTipoActividad: entrenamiento.inTipoActividad,
+      inActividadEntrenamiento: entrenamiento.key,
+      inPersona: entrenamiento.inPersona,
+      inEntrenador: entrenamiento.inEntrenador,
+      entrenador: entrenamiento.entrenador,
+      fechaInicio: fechaInicio,
+      fechaTermino: fechaTermino,
+      fechaExamen: fechaExamen,
+      inNotaTeorica: int.parse(notaTeoricaController.text),
+      inNotaPractica: int.parse(notaPracticaController.text),
+      inTotalHoras: int.parse(totalHorasModuloController.text),
+      inHorasAcumuladas: int.parse(horasAcumuladasController.text),
+      inHorasMinestar: int.parse(horasMinestarController.text),
+      inModulo: entrenamiento.inModulo,
+      modulo: entrenamiento.modulo,
+      eliminado: 'N',
+      motivoEliminado: '',
+      inTipoPersona: entrenamiento.inTipoPersona,
+      inCategoria: entrenamiento.inCategoria,
+      inEquipo: entrenamiento.inEquipo,
+      equipo: entrenamiento.equipo,
+      inEmpresaCapacitadora: entrenamiento.inEmpresaCapacitadora,
+      inCondicion: entrenamiento.inCondicion,
+      condicion: entrenamiento.condicion,
+      inEstado: 0,
+      comentarios: '',
+      inCapacitacion: 0,
+    );
 
     try {
-      return true;
+      final response = await moduloMaestroService.registrarModulo(modulo);
+      if (response.success && response.data != null) {
+        log('Registrar módulo exitoso: ${response.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Módulo registrado con éxito."),
+            backgroundColor: Colors.green,
+          ),
+        );
+        return true;
+      } else {
+        log('Error al registrar módulo: ${response.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error al registrar módulo: ${response.message}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return false;
+      }
     } catch (e) {
+      log('CATCH: Error al registrar módulo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error al registrar módulo: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
       return false;
-    } finally {
-      //return false;
     }
   }
 

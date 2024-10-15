@@ -46,8 +46,12 @@ class NewPersonalController extends GetxController {
 
   var documentoAdjuntoNombre = ''.obs;
   var documentoAdjuntoBytes = Rxn<Uint8List>();
-
   var archivosAdjuntos = <Map<String, dynamic>>[].obs;
+
+  DateTime? fechaIngreso;
+  DateTime? fechaIngresoMina;
+  DateTime? fechaRevalidacion;
+
   final ArchivoService archivoService = ArchivoService();
 
   RxBool isLoadingDni = false.obs;
@@ -185,40 +189,40 @@ class NewPersonalController extends GetxController {
     try {
       isSaving.value = true;
 
-      String _obtenerPrimerNombre(String nombres) {
+      String obtenerPrimerNombre(String nombres) {
         List<String> nombresSplit = nombres.split(' ');
         return nombresSplit.isNotEmpty ? nombresSplit.first : '';
       }
 
-      String _obtenerSegundoNombre(String nombres) {
+      String obtenerSegundoNombre(String nombres) {
         List<String> nombresSplit = nombres.split(' ');
         return nombresSplit.length > 1 ? nombresSplit[1] : '';
       }
 
-      String _verificarTexto(String texto) {
+      String verificarTexto(String texto) {
         return texto.isNotEmpty ? texto : '';
       }
 
-      DateTime? _parsearFecha(String fechaTexto) {
+      DateTime? parsearFecha(String fechaTexto) {
         return fechaTexto.isNotEmpty
             ? DateFormat('yyyy-MM-dd').parse(fechaTexto)
             : null;
       }
 
       personalData!
-        ..primerNombre = _obtenerPrimerNombre(nombresController.text)
-        ..segundoNombre = _obtenerSegundoNombre(nombresController.text)
-        ..apellidoPaterno = _verificarTexto(apellidoPaternoController.text)
-        ..apellidoMaterno = _verificarTexto(apellidoMaternoController.text)
-        ..cargo = _verificarTexto(puestoTrabajoController.text)
-        ..fechaIngreso = _parsearFecha(fechaIngresoController.text)
-        ..licenciaConducir = _verificarTexto(codigoLicenciaController.text)
-        ..fechaIngresoMina = _parsearFecha(fechaIngresoMinaController.text)
-        ..licenciaVencimiento = _parsearFecha(fechaRevalidacionController.text)
+        ..primerNombre = obtenerPrimerNombre(nombresController.text)
+        ..segundoNombre = obtenerSegundoNombre(nombresController.text)
+        ..apellidoPaterno = verificarTexto(apellidoPaternoController.text)
+        ..apellidoMaterno = verificarTexto(apellidoMaternoController.text)
+        ..cargo = verificarTexto(puestoTrabajoController.text)
+        ..fechaIngreso = parsearFecha(fechaIngresoController.text)
+        ..licenciaConducir = verificarTexto(codigoLicenciaController.text)
+        ..fechaIngresoMina = parsearFecha(fechaIngresoMinaController.text)
+        ..licenciaVencimiento = parsearFecha(fechaRevalidacionController.text)
         ..guardia.key = selectedGuardiaKey.value ?? 0
         ..operacionMina = isOperacionMina.value ? 'S' : 'N'
         ..zonaPlataforma = isZonaPlataforma.value ? 'S' : 'N'
-        ..restricciones = _verificarTexto(restriccionesController.text);
+        ..restricciones = verificarTexto(restriccionesController.text);
 
       if (accion == 'eliminar') {
         personalData!
@@ -272,22 +276,6 @@ class NewPersonalController extends GetxController {
 
   //Validaciones
   bool validate(BuildContext context) {
-    /*
-    if (dniController.text.isEmpty ||
-        dniController.text.length != 8 ||
-        !RegExp(r'^\d+$').hasMatch(dniController.text)) {
-      errores.add('Debe ingresar un DNI válido.');
-    }
-
-    if (nombresController.text.isEmpty) {
-      errores.add('El campo de nombres no puede estar vacío.');
-    }
-    if (apellidoPaternoController.text.isEmpty) {
-      errores.add('El campo de apellido paterno no puede estar vacío.');
-    }
-    if (apellidoMaternoController.text.isEmpty) {
-      errores.add('El campo de apellido materno no puede estar vacío.');
-    }*/
     DateTime? fechaIngreso = parseDate(fechaIngresoController.text);
     DateTime? fechaIngresoMina = parseDate(fechaIngresoMinaController.text);
 
@@ -339,7 +327,7 @@ class NewPersonalController extends GetxController {
             archivosAdjuntos.add({
               'nombre': fileName,
               'bytes': fileBytes,
-              'new': true,
+              'nuevo': true,
             });
             log('Documento adjuntado correctamente: $fileName');
           }
