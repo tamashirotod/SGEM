@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:sgem/config/theme/app_theme.dart';
-import 'package:sgem/modules/dialogs/entrenamiento/entrenamiento.nuevo.controller.dart';
+import 'package:sgem/modules/pages/personal.training/training/modales/new%20training/entrenamiento.nuevo.controller.dart';
 import 'package:sgem/modules/pages/personal.training/personal.training.controller.dart';
 import 'package:sgem/modules/pages/personal.training/personal/new.personal.controller.dart';
 import 'package:sgem/modules/pages/personal.training/training/training.personal.controller.dart';
@@ -12,8 +12,8 @@ import 'package:sgem/shared/widgets/custom.textfield.dart';
 import 'package:sgem/shared/widgets/delete/widget.delete.motivo.dart';
 import 'package:sgem/shared/widgets/delete/widget.delete.personal.confirmation.dart';
 import 'package:sgem/shared/widgets/delete/widget.delete.personal.dart';
-import 'package:sgem/shared/widgets/entrenamiento.modulo/widget.entrenamiento.modulo.nuevo.dart';
-import '../../../dialogs/entrenamiento/entrenamiento.nuevo.modal.dart';
+import 'package:sgem/modules/pages/personal.training/training/modales/new%20module/entrenamiento.modulo.nuevo.dart';
+import 'modales/new training/entrenamiento.nuevo.modal.dart';
 
 class TrainingPersonalPage extends StatelessWidget {
   final PersonalSearchController controllerPersonal;
@@ -259,12 +259,15 @@ class TrainingPersonalPage extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.radio_button_checked,
-                            color: Colors.orange),
+                        Icon(
+                          Icons.radio_button_checked,
+                          color: _getColorByEstado(
+                              training.estadoEntrenamiento.key),
+                        ),
                         const SizedBox(width: 4),
                         _buildCustomTextField(
                           'Estado entrenamiento',
-                          _getEstadoEntrenamiento(training.inEstado),
+                          training.estadoEntrenamiento.nombre,
                         ),
                       ],
                     ),
@@ -273,8 +276,11 @@ class TrainingPersonalPage extends StatelessWidget {
                         const Icon(Icons.radio_button_on, color: Colors.green),
                         const SizedBox(width: 4),
                         _buildCustomTextField(
-                          'Horas de entrenamiento',
-                          '${training.inHorasAcumuladas}/${training.inTotalHoras}', // Mostrar horas acumuladas y totales
+                          'Estado de avance actual',
+                          _getEstadoAvanceActual(
+                              training.estadoEntrenamiento.nombre,
+                              training.inHorasAcumuladas,
+                              training.inTotalHoras),
                         ),
                       ],
                     ),
@@ -304,6 +310,10 @@ class TrainingPersonalPage extends StatelessWidget {
               final modulos =
                   controller.obtenerModulosPorEntrenamiento(training.key);
               return ExpansionTile(
+                backgroundColor: Colors.grey.shade100,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 title: const Text('Módulos del entrenamiento',
                     style:
                         TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -699,19 +709,30 @@ class TrainingPersonalPage extends StatelessWidget {
     );
   }
 
-  String _getEstadoEntrenamiento(int estado) {
-    switch (estado) {
-      case 0:
-        return 'Inactivo';
-      case 1:
-        return 'Activo';
-      default:
-        return 'Desconocido';
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Sin fecha';
+    return DateFormat('dd-MM-yyyy').format(date);
+  }
+
+  String _getEstadoAvanceActual(
+      String estadoEntrenamiento, int horasAcumuladas, int totalHoras) {
+    if (estadoEntrenamiento.toLowerCase() == 'autorizado') {
+      return 'Finalizado';
+    } else {
+      return '$horasAcumuladas/$totalHoras';
     }
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Sin fecha';
-    return DateFormat('yyyy-MM-dd').format(date);
+  Color _getColorByEstado(int estado) {
+    switch (estado) {
+      case 13:
+        return Colors.green; // AUTORIZADO
+      case 11:
+        return Colors.orange; // ENTRENANDO
+      case 12:
+        return Colors.red; //PARALIZADO
+      default:
+        return Colors.grey;
+    }
   }
 }

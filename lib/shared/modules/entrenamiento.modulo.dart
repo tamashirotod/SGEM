@@ -34,6 +34,7 @@ class EntrenamientoModulo {
   int inHorasAcumuladas;
   int inHorasMinestar;
   int inEstado;
+  Entidad estadoEntrenamiento;
   String comentarios;
   String eliminado;
   String motivoEliminado;
@@ -66,10 +67,25 @@ class EntrenamientoModulo {
     required this.inHorasAcumuladas,
     required this.inHorasMinestar,
     required this.inEstado,
+    required this.estadoEntrenamiento,
     required this.comentarios,
     required this.eliminado,
     required this.motivoEliminado,
   });
+
+  void actualizarConUltimoModulo(EntrenamientoModulo ultimoModulo) {
+    if (ultimoModulo.entrenador.nombre.isNotEmpty) {
+      entrenador = ultimoModulo.entrenador;
+    }
+    if (ultimoModulo.estadoEntrenamiento.nombre.isNotEmpty) {
+      estadoEntrenamiento = ultimoModulo.estadoEntrenamiento;
+    }
+    inNotaTeorica = ultimoModulo.inNotaTeorica;
+    inNotaPractica = ultimoModulo.inNotaPractica;
+    inHorasAcumuladas = ultimoModulo.inHorasAcumuladas;
+    inTotalHoras = ultimoModulo.inTotalHoras;
+    modulo = ultimoModulo.modulo;
+  }
 
   factory EntrenamientoModulo.fromJson(Map<String, dynamic> json) =>
       EntrenamientoModulo(
@@ -110,6 +126,8 @@ class EntrenamientoModulo {
         inHorasAcumuladas: json["InHorasAcumuladas"] ?? 0,
         inHorasMinestar: json["InHorasMinestar"] ?? 0,
         inEstado: json["InEstado"] ?? 0,
+        estadoEntrenamiento:
+            Entidad.fromJson(json["EstadoEntrenamiento"] ?? {}),
         comentarios: json["Comentarios"] ?? '',
         eliminado: json["Eliminado"] ?? '',
         motivoEliminado: json["MotivoEliminado"] ?? '',
@@ -143,6 +161,7 @@ class EntrenamientoModulo {
         "InHorasAcumuladas": inHorasAcumuladas,
         "InHorasMinestar": inHorasMinestar,
         "InEstado": inEstado,
+        "EstadoEntrenamiento": estadoEntrenamiento.toJson(),
         "Comentarios": comentarios,
         "Eliminado": eliminado,
         "MotivoEliminado": motivoEliminado,

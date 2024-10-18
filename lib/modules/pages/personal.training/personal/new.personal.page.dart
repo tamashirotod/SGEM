@@ -36,8 +36,10 @@ class NuevoPersonalPage extends StatelessWidget {
       controller.apellidoPaternoController.text = personal.apellidoPaterno;
       controller.apellidoMaternoController.text = personal.apellidoMaterno;
       controller.gerenciaController.text = personal.gerencia;
+      controller.fechaIngreso = personal.fechaIngreso;
       controller.fechaIngresoController.text =
-          personal.fechaIngreso?.toString() ?? '';
+          DateFormat('dd/MM/yyyy').format(controller.fechaIngreso!);
+
       controller.areaController.text = personal.area;
       controller.categoriaLicenciaController.text = personal.licenciaCategoria;
       controller.codigoLicenciaController.text = personal.licenciaConducir;
@@ -47,15 +49,21 @@ class NuevoPersonalPage extends StatelessWidget {
         controller.selectedGuardiaKey.value = null;
       }
       controller.restriccionesController.text = personal.restricciones;
+      controller.fechaIngresoMina = personal.fechaIngresoMina;
       controller.fechaIngresoMinaController.text =
-          personal.fechaIngresoMina?.toString() ?? '';
+          DateFormat('dd/MM/yyyy').format(controller.fechaIngresoMina!);
+
+      controller.fechaRevalidacion = personal.licenciaVencimiento;
       controller.fechaRevalidacionController.text =
-          personal.licenciaVencimiento?.toString() ?? '';
+          controller.fechaRevalidacion != null
+              ? DateFormat('dd/MM/yyyy').format(controller.fechaRevalidacion!)
+              : ' ';
 
       controller.isOperacionMina.value = personal.operacionMina == 'S';
       controller.isZonaPlataforma.value = personal.zonaPlataforma == 'S';
-      controller.estadoPersonal.value =
-          personal.estado.nombre == 'Activo' ? 'Activo' : 'Cesado';
+      //controller.estadoPersonal.value =
+      //  personal.estado.nombre == 'Activo' ? 'Activo' : 'Cesado';
+      controller.estadoPersonalKey.value = personal.estado.key;
       controller.obtenerArchivosRegistrados(1, personal.key);
     }
   }
@@ -123,14 +131,25 @@ class NuevoPersonalPage extends StatelessWidget {
               }),
               const SizedBox(height: 10),
               Obx(() {
-                String estado = controller.estadoPersonal.value;
-                Color estadoColor =
-                    estado == 'Activo' ? Colors.green : Colors.red;
+                int estado = controller.estadoPersonalKey.value;
+                Color estadoColor;
+                switch (estado) {
+                  case 95:
+                    estadoColor = Colors.green;
+                    break;
+                  case 96:
+                    estadoColor = Colors.red;
+                    break;
+                  default:
+                    estadoColor = Colors.grey;
+                    break;
+                }
                 return Row(
                   children: [
                     Icon(Icons.circle, color: estadoColor, size: 12),
-                    const SizedBox(width: 5),
-                    Text(estado, style: const TextStyle(fontSize: 14)),
+                    const SizedBox(width: 10),
+                    Text(estado.toString(),
+                        style: const TextStyle(fontSize: 14)),
                   ],
                 );
               }),
@@ -290,10 +309,12 @@ class NuevoPersonalPage extends StatelessWidget {
                   icon: const Icon(Icons.calendar_today),
                   isReadOnly: isViewing,
                   isRequired: !isViewing,
-                  onIconPressed: () {
+                  onIconPressed: () async {
                     if (!isViewing) {
-                      _selectDate(
-                          context, controller.fechaIngresoMinaController);
+                      controller.fechaIngresoMina = await _selectDate(context);
+                      controller.fechaIngresoMinaController.text =
+                          DateFormat('dd/MM/yyyy')
+                              .format(controller.fechaIngresoMina!);
                     }
                   },
                 ),
@@ -538,16 +559,13 @@ class NuevoPersonalPage extends StatelessWidget {
     });
   }
 
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+  Future<DateTime?> _selectDate(BuildContext context) async {
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) {
-      controller.text = DateFormat('yyyy-MM-dd').format(picked);
-    }
+    return picked;
   }
 }

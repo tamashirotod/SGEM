@@ -39,8 +39,8 @@ class NewPersonalController extends GetxController {
 
   Personal? personalData;
   Rxn<Uint8List?> personalPhoto = Rxn<Uint8List?>();
-  var estadoPersonal = 'Cesado'.obs;
-
+  //RxString estadoPersonal = 'Cesado'.obs;
+  RxInt estadoPersonalKey = 0.obs;
   RxBool isOperacionMina = false.obs;
   RxBool isZonaPlataforma = false.obs;
 
@@ -62,11 +62,9 @@ class NewPersonalController extends GetxController {
     try {
       final photoResponse =
           await personalService.obtenerFotoPorCodigoOrigen(idOrigen);
-      log(photoResponse.data.toString());
 
       if (photoResponse.success && photoResponse.data != null) {
         personalPhoto.value = photoResponse.data;
-        log('Foto del personal cargada con éxito');
       } else {
         log('Error al cargar la foto: ${photoResponse.message}');
       }
@@ -92,22 +90,22 @@ class NewPersonalController extends GetxController {
           responseListar.data!.isNotEmpty) {
         _mostrarErroresValidacion(Get.context!,
             ['La persona ya se encuentra registrada en el sistema.']);
+        resetControllers();
         return;
       }
 
       final responseBuscar = await personalService.buscarPersonalPorDni(dni);
-
       if (responseBuscar.success && responseBuscar.data != null) {
         personalData = responseBuscar.data;
-        log('Personal encontrado: ${personalData!.toJson().toString()}');
         llenarControladores(personalData!);
       } else {
-        ScaffoldMessenger.of(Get.context!).showSnackBar(const SnackBar(
-          content: Text('Personal no encontrado'),
-          backgroundColor: Colors.red,
-        ));
+        ScaffoldMessenger.of(Get.context!).showSnackBar(
+          const SnackBar(
+            content: Text('Personal no encontrado'),
+            backgroundColor: Colors.red,
+          ),
+        );
         resetControllers();
-        log('Error al buscar el personal: ${responseBuscar.message}');
       }
     } catch (e) {
       log('Error inesperado al buscar el personal: $e');
@@ -129,49 +127,41 @@ class NewPersonalController extends GetxController {
     }
   }
 
-  void llenarControladores(Personal? personal) {
-    if (personal != null) {
-      loadPersonalPhoto(personal.inPersonalOrigen);
-      dniController.text = personal.numeroDocumento;
-      nombresController.text =
-          '${personal.primerNombre} ${personal.segundoNombre}';
-      puestoTrabajoController.text = personal.cargo;
-      codigoController.text = personal.codigoMcp;
-      apellidoPaternoController.text = personal.apellidoPaterno;
-      apellidoMaternoController.text = personal.apellidoMaterno;
-      gerenciaController.text = personal.gerencia;
+  void llenarControladores(Personal personal) {
+    loadPersonalPhoto(personal.inPersonalOrigen);
+    dniController.text = personal.numeroDocumento;
+    nombresController.text =
+        '${personal.primerNombre} ${personal.segundoNombre}';
+    puestoTrabajoController.text = personal.cargo;
+    codigoController.text = personal.codigoMcp;
+    apellidoPaternoController.text = personal.apellidoPaterno;
+    apellidoMaternoController.text = personal.apellidoMaterno;
+    gerenciaController.text = personal.gerencia;
 
-      fechaIngresoController.text = personal.fechaIngreso != null
-          ? formatDate(personal.fechaIngreso!)
-          : '';
+    fechaIngreso = personal.fechaIngreso;
+    fechaIngresoController.text =
+        DateFormat('dd/MM/yyyy').format(fechaIngreso!);
+    fechaIngresoMina = personal.fechaIngresoMina;
+    fechaIngresoMinaController.text =
+        DateFormat('dd/MM/yyyy').format(fechaIngresoMina!);
+    fechaRevalidacion = personal.licenciaVencimiento;
+    fechaRevalidacionController.text =
+        DateFormat('dd/MM/yyyy').format(fechaRevalidacion!);
 
-      fechaIngresoMinaController.text = personal.fechaIngresoMina != null
-          ? formatDate(personal.fechaIngresoMina!)
-          : '';
-
-      fechaRevalidacionController.text = personal.licenciaVencimiento != null
-          ? formatDate(personal.licenciaVencimiento!)
-          : '';
-
-      areaController.text = personal.area;
-      categoriaLicenciaController.text = personal.licenciaCategoria;
-      codigoLicenciaController.text = personal.licenciaConducir;
-      restriccionesController.text = personal.restricciones;
-      if (personal.guardia.key != 0) {
-        selectedGuardiaKey.value = personal.guardia.key;
-      } else {
-        selectedGuardiaKey.value = null;
-      }
-      isOperacionMina.value = personal.operacionMina == 'S';
-      isZonaPlataforma.value = personal.zonaPlataforma == 'S';
-
-      if (personal.estado.nombre == 'Activo') {
-        estadoPersonal.value = 'Activo';
-      } else {
-        estadoPersonal.value = 'Cesado';
-      }
-      obtenerArchivosRegistrados(1, personal.key);
+    areaController.text = personal.area;
+    categoriaLicenciaController.text = personal.licenciaCategoria;
+    codigoLicenciaController.text = personal.licenciaConducir;
+    restriccionesController.text = personal.restricciones;
+    if (personal.guardia.key != 0) {
+      selectedGuardiaKey.value = personal.guardia.key;
+    } else {
+      selectedGuardiaKey.value = null;
     }
+    isOperacionMina.value = personal.operacionMina == 'S';
+    isZonaPlataforma.value = personal.zonaPlataforma == 'S';
+    //estadoPersonal.value = personal.estado.nombre;
+    estadoPersonalKey.value = personal.estado.key;
+    obtenerArchivosRegistrados(1, personal.key);
   }
 
   Future<bool> gestionarPersona({
@@ -182,7 +172,7 @@ class NewPersonalController extends GetxController {
     errores.clear();
     log('Gestionando persona con la acción: $accion');
     bool esValido = validate(context);
-    if (!esValido) {
+    if (!esValido && accion != 'eliminar') {
       _mostrarErroresValidacion(context, errores);
       return false;
     }
@@ -203,22 +193,16 @@ class NewPersonalController extends GetxController {
         return texto.isNotEmpty ? texto : '';
       }
 
-      DateTime? parsearFecha(String fechaTexto) {
-        return fechaTexto.isNotEmpty
-            ? DateFormat('yyyy-MM-dd').parse(fechaTexto)
-            : null;
-      }
-
       personalData!
         ..primerNombre = obtenerPrimerNombre(nombresController.text)
         ..segundoNombre = obtenerSegundoNombre(nombresController.text)
         ..apellidoPaterno = verificarTexto(apellidoPaternoController.text)
         ..apellidoMaterno = verificarTexto(apellidoMaternoController.text)
         ..cargo = verificarTexto(puestoTrabajoController.text)
-        ..fechaIngreso = parsearFecha(fechaIngresoController.text)
+        ..fechaIngreso = fechaIngreso
         ..licenciaConducir = verificarTexto(codigoLicenciaController.text)
-        ..fechaIngresoMina = parsearFecha(fechaIngresoMinaController.text)
-        ..licenciaVencimiento = parsearFecha(fechaRevalidacionController.text)
+        ..fechaIngresoMina = fechaIngresoMina
+        ..licenciaVencimiento = fechaRevalidacion
         ..guardia.key = selectedGuardiaKey.value ?? 0
         ..operacionMina = isOperacionMina.value ? 'S' : 'N'
         ..zonaPlataforma = isZonaPlataforma.value ? 'S' : 'N'
@@ -270,26 +254,17 @@ class NewPersonalController extends GetxController {
     }
   }
 
-  String formatDate(DateTime date) {
-    return DateFormat('yyyy-MM-dd').format(date);
-  }
-
   //Validaciones
   bool validate(BuildContext context) {
-    DateTime? fechaIngreso = parseDate(fechaIngresoController.text);
-    DateTime? fechaIngresoMina = parseDate(fechaIngresoMinaController.text);
-
+    log('Validando la fecha de ingreso a mina');
+    log('Fecha de ingreso mina: ${fechaIngresoMina}');
     if (fechaIngresoMina == null) {
       errores.add('Debe seleccionar una fecha de ingreso a la mina.');
     } else {
-      if (fechaIngresoMina.isBefore(DateTime.now())) {
+      if (fechaIngresoMina!.isBefore(DateTime.now())) {
+        log('Fecha de ingreso mina: ${fechaIngresoMina}');
         errores.add(
             'La fecha de ingreso a la mina debe ser mayor a la fecha actual.');
-      }
-
-      if (fechaIngreso != null && fechaIngresoMina.isBefore(fechaIngreso)) {
-        errores.add(
-            'La fecha de ingreso a la mina debe ser mayor que la fecha de ingreso a la empresa.');
       }
     }
     if (codigoLicenciaController.text.isEmpty ||
@@ -474,7 +449,8 @@ class NewPersonalController extends GetxController {
     personalPhoto.value = null;
     isOperacionMina.value = false;
     isZonaPlataforma.value = false;
-    estadoPersonal.value = 'Activo';
+    estadoPersonalKey.value = 0;
+    //estadoPersonal.value = '';
     documentoAdjuntoNombre.value = '';
     documentoAdjuntoBytes.value = null;
     personalData = null;

@@ -2,8 +2,9 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:dio/dio.dart';
 import 'package:sgem/config/api/response.handler.dart';
+import 'package:sgem/config/constants/config.dart';
+import 'package:sgem/shared/modules/entrenamiento.actualizacion.masiva.dart';
 import 'package:sgem/shared/modules/entrenamiento.modulo.dart';
-import 'package:sgem/shared/modules/training.dart';
 
 import '../../shared/modules/entrenamiento.consulta.dart';
 
@@ -27,10 +28,8 @@ class TrainingService {
 
   Future<ResponseHandler<bool>> registerTraining(
       EntrenamientoModulo entrenamiento) async {
-    log('Registrando nuevo entrenamiento: ${jsonEncode(entrenamiento.toJson())}');
     final url = '$baseUrl/Entrenamiento/RegistrarEntrenamiento';
     try {
-      log('Registrando nuevo entrenamiento: ${jsonEncode(entrenamiento.toJson())}');
       final response = await dio.post(
         url,
         data: jsonEncode(entrenamiento.toJson()),
@@ -38,7 +37,6 @@ class TrainingService {
           followRedirects: false,
         ),
       );
-      log("RESPONSE: $response");
       if (response.statusCode == 200 && response.data != null) {
         if (response.data) {
           return ResponseHandler.handleSuccess<bool>(true);
@@ -55,33 +53,40 @@ class TrainingService {
         );
       }
     } on DioException catch (e) {
-      log('Error al registrar entrenamiento. Datos: ${jsonEncode(entrenamiento.toJson())}, Error: ${e.response?.data}');
       return ResponseHandler.handleFailure(e);
     }
   }
 
-  Future<ResponseHandler<Entrenamiento>> obtenerUltimoModuloPorEntrenamiento(
-      int entrenamientoId) async {
+  Future<ResponseHandler<EntrenamientoModulo>>
+      obtenerUltimoModuloPorEntrenamiento(int entrenamientoId) async {
     final url =
         '$baseUrl/Entrenamiento/ObtenerUltimoModuloPorEntrenamiento?inEntrenamiento=$entrenamientoId';
     try {
-      log('Obteniendo el último módulo para el entrenamiento con ID: $entrenamientoId');
       final response =
           await dio.get(url, options: Options(followRedirects: false));
-      log('RESPONSE OBTENER ÚLTIMO MÓDULO: $response');
 
       if (response.statusCode == 200 && response.data != null) {
-        Entrenamiento ultimoModulo = Entrenamiento.fromJson(response.data);
-        return ResponseHandler.handleSuccess<Entrenamiento>(ultimoModulo);
+        try {
+          EntrenamientoModulo ultimoModulo =
+              EntrenamientoModulo.fromJson(response.data);
+          return ResponseHandler<EntrenamientoModulo>(
+              success: true, data: ultimoModulo);
+        } catch (e) {
+          return ResponseHandler<EntrenamientoModulo>(
+            success: false,
+            message: 'Error al mapear los datos a EntrenamientoModulo.',
+          );
+        }
       } else {
-        return ResponseHandler(
+        log('Error en la respuesta del servidor: ${response.statusCode}, Datos: ${response.data}');
+        return ResponseHandler<EntrenamientoModulo>(
           success: false,
           message: 'Error al obtener el último módulo',
         );
       }
     } on DioException catch (e) {
       log('Error al obtener el último módulo para el entrenamiento con ID: $entrenamientoId. Error: ${e.response?.data}');
-      return ResponseHandler.handleFailure(e);
+      return ResponseHandler.handleFailure<EntrenamientoModulo>(e);
     }
   }
 
@@ -206,6 +211,68 @@ class TrainingService {
       final entrenamientoList = items
           .map((entrenamientoJson) =>
               EntrenamientoConsulta.fromJson(entrenamientoJson))
+          .toList();
+
+      final responseData = {
+        'Items': entrenamientoList,
+        'PageNumber': result['PageNumber'],
+        'TotalPages': result['TotalPages'],
+        'TotalRecords': result['TotalRecords'],
+        'PageSize': result['PageSize'],
+      };
+
+      return ResponseHandler.handleSuccess<Map<String, dynamic>>(responseData);
+    } on DioException catch (e) {
+      log('Error al consultar entrenamientos paginado. Error: ${e.response?.data}');
+      return ResponseHandler.handleFailure(e);
+    }
+  }
+
+  Future<ResponseHandler<Map<String, dynamic>>> ActualizacionMasivaPaginado({
+    String? codigoMcp,
+    String? numeroDocumento,
+    int? inGuardia,
+    String? nombres,
+    String? apellidos,
+    int? inEquipo,
+    int? inModulo,
+
+    int? pageSize,
+    int? pageNumber,
+  }) async {
+    log('Llamando al endpoint actuaalizacion masiva');
+    const url = '${ConfigFile.apiUrl}/Entrenamiento/EntrenamientoActualizacionMasivaPaginado';
+    Map<String, dynamic> queryParams = {
+      'parametros.codigoMcp': codigoMcp,
+      'parametros.numeroDocumento': numeroDocumento,
+      'parametros.inGuardia': inGuardia,
+      'parametros.nombres': nombres,
+      'parametros.apellidos': apellidos,
+      'parametros.inEquipo': inEquipo,
+      'parametros.inModulo': inModulo,
+
+      'parametros.pageSize': pageSize,
+      'parametros.pageNumber': pageNumber,
+    };
+    try {
+      log('Listando personal de entrenamiento paginado con parámetros: $queryParams');
+      final response = await dio.get(
+        url,
+        queryParameters: queryParams
+          ..removeWhere((key, value) => value == null),
+        options: Options(
+          followRedirects: false,
+        ),
+      );
+
+      log('Respuesta recibida para actualizacion masiva Paginado: ${response.data}');
+
+      final result = response.data as Map<String, dynamic>;
+
+      final items = result['Items'] as List;
+      final entrenamientoList = items
+          .map((entrenamientoJson) =>
+          EntrenamientoActualizacionMasiva.fromJson(entrenamientoJson))
           .toList();
 
       final responseData = {
